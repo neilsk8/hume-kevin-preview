@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Ruggie · Shopify install callback</title>
+  <style>
+    :root {
+      --bone: #F4EFE6; --onyx: #17130E; --brass: #B8924A; --cream: #FBF8F2;
+      --line: #E4DACB; --muted: #6B6256; --ok: #1E7A53; --err: #B0432F;
+    }
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Inter", system-ui, sans-serif; background: var(--bone); color: var(--onyx); padding: 48px 20px; max-width: 720px; margin: 0 auto; line-height: 1.55; }
+    .brand { font-weight: 800; letter-spacing: -0.01em; font-size: 0.95rem; text-transform: uppercase; color: var(--brass); }
+    h1 { font-size: 1.6rem; margin: 6px 0 8px; letter-spacing: -0.02em; }
+    p.lede { color: var(--muted); margin: 0 0 24px; }
+    .panel { background: var(--cream); border: 1px solid var(--line); border-radius: 14px; padding: 20px 22px; margin: 16px 0; }
+    .row { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+    .row:last-child { margin-bottom: 0; }
+    .row label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted); font-weight: 700; }
+    .val { display: flex; align-items: stretch; gap: 8px; }
+    .val code { flex: 1; background: #fff; border: 1px solid var(--line); padding: 10px 12px; border-radius: 8px; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.85rem; word-break: break-all; min-height: 40px; display: flex; align-items: center; }
+    button.copy { border: 1px solid var(--onyx); background: var(--onyx); color: var(--bone); border-radius: 8px; padding: 0 14px; font-size: 0.78rem; font-weight: 700; cursor: pointer; white-space: nowrap; }
+    button.copy:hover { opacity: 0.88; }
+    button.copy:active { transform: translateY(1px); }
+    .status { font-weight: 700; }
+    .status.ok { color: var(--ok); }
+    .status.err { color: var(--err); }
+    .hint { font-size: 0.85rem; color: var(--muted); margin-top: 20px; }
+    .hint code { background: #fff; border: 1px solid var(--line); padding: 1px 6px; border-radius: 5px; font-size: 0.8rem; }
+    .big-copy { width: 100%; margin-top: 8px; padding: 13px; font-size: 0.9rem; border: 1px solid var(--brass); background: var(--brass); color: var(--onyx); border-radius: 10px; font-weight: 800; cursor: pointer; }
+    .big-copy:hover { filter: brightness(1.03); }
+    .warn { background: #FBF1DC; border: 1px solid #E7C97A; color: #6B5212; border-radius: 10px; padding: 12px 14px; font-size: 0.83rem; margin: 18px 0; }
+  </style>
+</head>
+<body>
+  <div class="brand">Ruggie × Skyvane</div>
+  <h1>Shopify install callback</h1>
+  <p class="lede">This page captures the one-time authorization returned by Shopify after the app is installed on the store. Internal use only — nothing here is your access token yet.</p>
+
+  <div class="warn">⏳ The authorization <strong>code</strong> below is single-use and expires within a few minutes. Send it to your Skyvane contact (or run the exchange) right away.</div>
+
+  <div class="panel">
+    <div class="row">
+      <label>Status</label>
+      <span class="status" id="status">Reading URL parameters…</span>
+    </div>
+    <div class="row">
+      <label>Shop</label>
+      <div class="val"><code id="shop">—</code><button class="copy" data-target="shop">Copy</button></div>
+    </div>
+    <div class="row">
+      <label>Authorization code (one-time)</label>
+      <div class="val"><code id="code">—</code><button class="copy" data-target="code">Copy</button></div>
+    </div>
+    <div class="row">
+      <label>HMAC</label>
+      <div class="val"><code id="hmac">—</code><button class="copy" data-target="hmac">Copy</button></div>
+    </div>
+    <div class="row">
+      <label>State</label>
+      <div class="val"><code id="state">—</code><button class="copy" data-target="state">Copy</button></div>
+    </div>
+    <div class="row">
+      <label>Host</label>
+      <div class="val"><code id="host">—</code><button class="copy" data-target="host">Copy</button></div>
+    </div>
+    <div class="row">
+      <label>Captured at</label>
+      <code id="ts">—</code>
+    </div>
+
+    <button class="big-copy" id="copyAll">Copy everything for Skyvane →</button>
+  </div>
+
+  <p class="hint">
+    To turn this into a permanent Admin API token, run from the repo root:<br />
+    <code>node scripts/shopify-oauth-exchange.mjs &lt;shop&gt; &lt;code&gt;</code>
+  </p>
+
+  <script>
+    (() => {
+      const params = new URLSearchParams(window.location.search);
+      const fields = {
+        shop: params.get('shop'),
+        code: params.get('code'),
+        hmac: params.get('hmac'),
+        state: params.get('state'),
+        host: params.get('host'),
+      };
+      for (const [k, v] of Object.entries(fields)) {
+        document.getElementById(k).textContent = v || '—';
+      }
+      const ts = new Date().toISOString();
+      document.getElementById('ts').textContent = ts;
+
+      const status = document.getElementById('status');
+      if (fields.code && fields.shop) {
+        status.textContent = '✓ Authorization received — copy the code & shop now';
+        status.className = 'status ok';
+      } else {
+        status.textContent = '⚠ No code in URL — open this page only via the Shopify install redirect';
+        status.className = 'status err';
+      }
+
+      function copyText(text, btn) {
+        navigator.clipboard.writeText(text).then(() => {
+          const old = btn.textContent; btn.textContent = '✓ Copied';
+          setTimeout(() => { btn.textContent = old; }, 1400);
+        });
+      }
+
+      document.querySelectorAll('button.copy').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const v = document.getElementById(btn.dataset.target).textContent;
+          if (v && v !== '—') copyText(v, btn);
+        });
+      });
+
+      document.getElementById('copyAll').addEventListener('click', (e) => {
+        const summary =
+          'shop: ' + (fields.shop || '') + '\n' +
+          'code: ' + (fields.code || '') + '\n' +
+          'hmac: ' + (fields.hmac || '') + '\n' +
+          'state: ' + (fields.state || '') + '\n' +
+          'host: ' + (fields.host || '') + '\n' +
+          'captured_at: ' + ts;
+        copyText(summary, e.currentTarget);
+      });
+    })();
+  </script>
+</body>
+</html>
